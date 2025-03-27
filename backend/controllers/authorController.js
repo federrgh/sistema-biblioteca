@@ -42,9 +42,15 @@ exports.obtenerAutorPorCedula = async (req, res) => {
       //console.log("Libros del autor:", libros);
 
       res.json({
-          nombre: autor.nombre,
-          libros: libros.map((libro) => libro.titulo),
-      });
+        nombre: autor.nombre,
+        libros: libros.map((libro) => ({
+            titulo: libro.titulo,
+            isbn: libro.isbn,
+            editorial: libro.editorial,
+            genero: libro.genero,
+            anioPublicacion: libro.anioPublicacion
+        })),
+    });
   } catch (error) {
       console.error("Error en la consulta:", error);
       res.status(500).json({ mensaje: "Error en el servidor", error });
