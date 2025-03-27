@@ -11,6 +11,7 @@ const Dashboard = () => {
                 <Link to="/dashboard">Inicio</Link>
                 {user?.tipo === "empleado" && <Link to="/reporte">Reporte de Autores</Link>}
                 <button onClick={logout}>Cerrar Sesión</button>
+                <span>test</span>
             </nav>
         </div>
     );
