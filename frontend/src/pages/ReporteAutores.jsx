@@ -6,10 +6,11 @@ const Report = () => {
     const [cedula, setCedula] = useState("");
     const [reporte, setReporte] = useState(null);
     const [error, setError] = useState("");
-
+    
     useEffect(() => {
-        if (!user || user.tipo !== "empleado") {
+        if (!user || user.tipo !== "user") {
             setError("No tienes permisos para acceder a esta página.");
+            return;
         }
     }, [user]);
 

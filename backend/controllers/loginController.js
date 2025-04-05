@@ -1,6 +1,8 @@
 const Login = require("../models/login");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+//const bcrypt = require("bcrypt");
+const User = require("../models/userModel");
 
 const SECRET_KEY = "secreto"; // Usa una variable de entorno en producción
 
@@ -23,7 +25,15 @@ exports.login = async (req, res) => {
       expiresIn: "2h",
     });
 
-    res.json({ token, user: { id: user._id, user_name: user.user_name, tipo: user.tipo } });
+    res.json({ 
+        mensaje: "Login exitoso",
+        token, 
+        user: { 
+          id: user._id, 
+          user_name: user.user_name, 
+          tipo: user.tipo 
+        } 
+      });
   } catch (error) {
     res.status(500).json({ mensaje: "Error en el servidor" });
   }
@@ -48,5 +58,6 @@ exports.register = async (req, res) => {
     res.status(201).json({ mensaje: "Usuario registrado correctamente" });
   } catch (error) {
     res.status(500).json({ mensaje: "Error en el servidor" });
+    console.error(error)
   }
 };
