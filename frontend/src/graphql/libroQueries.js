@@ -53,3 +53,34 @@ export const ADD_LIBRO = gql`
     }
   }
 `;
+
+export const UPDATE_LIBRO = gql`
+mutation actualizarLibro(
+  $id: ID!
+  $isbn: String!
+  $titulo: String!
+  $editorial: String
+  $genero: String
+  $anioPublicacion: Int
+  $autor: ID!
+) {
+  actualizarLibro(
+    id: $id
+    isbn: $isbn
+    titulo: $titulo
+    editorial: $editorial
+    genero: $genero
+    anioPublicacion: $anioPublicacion
+    autor: $autor
+  ) {
+    id
+    titulo
+  }
+}
+`;
+
+export const DELETE_LIBRO = gql`
+mutation eliminarLibro($id: ID!) {
+  eliminarLibro(id: $id)
+}
+`;

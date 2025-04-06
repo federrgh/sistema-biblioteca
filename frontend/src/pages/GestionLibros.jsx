@@ -1,164 +1,160 @@
-import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@apollo/client";
-import { GET_LIBROS, GET_AUTORES, ADD_LIBRO } from "../graphql/libroQueries";
+import { useState } from "react";
+import {
+  GET_LIBROS,
+  GET_AUTORES,
+  ADD_LIBRO,
+  UPDATE_LIBRO,
+  DELETE_LIBRO,
+} from "../graphql/libroQueries";
 
 const GestionLibros = () => {
-    const [libros, setLibros] = useState([]);
-    const [form, setForm] = useState({
-        isbn: "",  // Cambiado de "ISBN" a "isbn"
-        titulo: "",
-        editorial: "",
-        genero: "",
-        anioPublicacion: "",
-        autor: "" // Aquí debe ir el ID del autor, no el nombre
+  const { data: librosData, loading: loadingLibros, refetch } = useQuery(GET_LIBROS);
+  const { data: autoresData } = useQuery(GET_AUTORES);
+  const [agregarLibro] = useMutation(ADD_LIBRO);
+  const [actualizarLibro] = useMutation(UPDATE_LIBRO);
+  const [eliminarLibro] = useMutation(DELETE_LIBRO);
+
+  const [form, setForm] = useState({
+    isbn: "",
+    titulo: "",
+    editorial: "",
+    genero: "",
+    anioPublicacion: "",
+    autor: ""
+  });
+
+  const [editId, setEditId] = useState(null);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setForm({
+      ...form,
+      [name]: name === "anioPublicacion" ? Number(value) || "" : value
     });
-    const [autores, setAutores] = useState([]);
-    const [editId, setEditId] = useState(null);
-    const [loading, setLoading] = useState(true);
+  };
 
-    useEffect(() => {
-        fetchLibros();
-    }, []);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const { isbn, titulo, editorial, genero, anioPublicacion, autor } = form;
 
-    useEffect(() => {
-        const fetchAutores = async () => {
-            const response = await fetch("http://localhost:3000/author");
-            const data = await response.json();
-            setAutores(data);
-        };
-        fetchAutores();
-    }, []);
+    if (!isbn || !titulo || !editorial || !genero || !anioPublicacion || !autor) {
+      alert("Completa todos los campos");
+      return;
+    }
 
-    const fetchLibros = async () => {
-        try {
-            const response = await fetch("http://localhost:3000/libros");
-            const data = await response.json();
-            setLibros(data);
-        } catch (error) {
-            console.error("Error al obtener libros", error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        
-        // Convertir anioPublicacion a número
-        setForm({ 
-            ...form, 
-            [name]: name === "anioPublicacion" ? Number(value) || "" : value 
+    try {
+      if (editId) {
+        await actualizarLibro({
+          variables: {
+            id: editId,
+            isbn,
+            titulo,
+            editorial,
+            genero,
+            anioPublicacion: parseInt(anioPublicacion),
+            autor
+          }
         });
-    };
-    
+        alert("Libro actualizado");
+      } else {
+        await agregarLibro({
+          variables: {
+            isbn,
+            titulo,
+            editorial,
+            genero,
+            anioPublicacion: parseInt(anioPublicacion),
+            autor
+          }
+        });
+        alert("Libro agregado");
+      }
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
+      setForm({ isbn: "", titulo: "", editorial: "", genero: "", anioPublicacion: "", autor: "" });
+      setEditId(null);
+      refetch();
+    } catch (error) {
+      console.error("Error al guardar libro:", error.message);
+    }
+  };
 
-        const libroData = {
-            ...form,
-            anioPublicacion: Number(form.anioPublicacion) || null // Convertir antes de enviarlo
-        };
+  const handleEdit = (libro) => {
+    setForm({
+      isbn: libro.isbn,
+      titulo: libro.titulo,
+      editorial: libro.editorial,
+      genero: libro.genero,
+      anioPublicacion: libro.anioPublicacion,
+      autor: libro.autor?.id || ""
+    });
+    setEditId(libro.id);
+  };
 
-        console.log("Datos antes de enviar:", form); // <-- Verifica si los datos están completos
+  const handleDelete = async (id) => {
+    if (!window.confirm("¿Seguro que quieres eliminar este libro?")) return;
 
-        if (!form.isbn || !form.titulo || !form.editorial || !form.genero || !form.anioPublicacion || !form.autor) {
-            alert("Por favor, completa todos los campos.");
-            return;
-        }
+    try {
+      await eliminarLibro({ variables: { id } });
+      refetch();
+    } catch (error) {
+      console.error("Error al eliminar libro:", error.message);
+    }
+  };
 
-        console.log("Enviando libro:", form); // Verificar datos antes de enviar
+  if (loadingLibros) return <p className="text-white">Cargando libros...</p>;
 
-        try {
-            const response = await fetch(`http://localhost:3000/libros/${editId ? editId : ""}`, {
-                method: editId ? "PUT" : "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(libroData),
-            });
+  return (
+    <div className="p-6 bg-gray-900 min-h-screen text-white font-[Poppins]">
+      <h2 className="text-3xl font-bold text-cyan-400 mb-6">Gestión de Libros</h2>
+      <form onSubmit={handleSubmit} className="space-y-4 bg-gray-800 p-6 rounded-lg shadow-lg">
+        <input type="text" name="isbn" placeholder="ISBN" value={form.isbn} onChange={handleChange} required className="w-full px-4 py-2 rounded bg-gray-700 text-white" />
+        <input type="text" name="titulo" placeholder="Título" value={form.titulo} onChange={handleChange} required className="w-full px-4 py-2 rounded bg-gray-700 text-white" />
+        <input type="text" name="editorial" placeholder="Editorial" value={form.editorial} onChange={handleChange} required className="w-full px-4 py-2 rounded bg-gray-700 text-white" />
+        <input type="text" name="genero" placeholder="Género" value={form.genero} onChange={handleChange} required className="w-full px-4 py-2 rounded bg-gray-700 text-white" />
+        <input type="number" name="anioPublicacion" placeholder="Año de Publicación" value={form.anioPublicacion} onChange={handleChange} required className="w-full px-4 py-2 rounded bg-gray-700 text-white" />
+        <select name="autor" value={form.autor} onChange={handleChange} required className="w-full px-4 py-2 rounded bg-gray-700 text-white">
+          <option value="">Selecciona un autor</option>
+          {autoresData?.obtenerAutores.map((autor) => (
+            <option key={autor.id} value={autor.id}>{autor.nombre}</option>
+          ))}
+        </select>
+        <button type="submit" className="bg-cyan-600 hover:bg-cyan-700 text-white px-6 py-2 rounded">
+          {editId ? "Actualizar" : "Agregar"}
+        </button>
+      </form>
 
-            const data = await response.json();
-            console.log("Respuesta del servidor:", data);
-
-            if (response.ok) {
-                alert(editId ? "Libro actualizado" : "Libro agregado");
-                setForm({ isbn: "", titulo: "", editorial: "", genero: "", anioPublicacion: "", autor: "" });
-                setEditId(null);
-                fetchLibros();
-            } else {
-                alert("Error al guardar: " + data.mensaje);
-            }
-        } catch (error) {
-            console.error("Error al enviar solicitud:", error);
-            alert("Hubo un error al agregar el libro.");
-        }
-    };
-
-
-
-    const handleEdit = (libro) => {
-        setForm(libro);
-        setEditId(libro._id);
-    };
-
-    const handleDelete = async (id) => {
-        if (!window.confirm("¿Seguro que deseas eliminar este libro?")) return;
-
-        try {
-            await fetch(`http://localhost:3000/libros/${id}`, { method: "DELETE" });
-            fetchLibros();
-        } catch (error) {
-            console.error("Error al eliminar el libro", error);
-        }
-    };
-
-    return (
-        <div className="p-6">
-            <h2 className="text-2xl font-bold text-blue-600 mb-4">Gestión de Libros</h2>
-            <form onSubmit={handleSubmit} className="space-y-3">
-                <input type="text" name="isbn" placeholder="ISBN" value={form.isbn} onChange={handleChange} required />
-                <input type="text" name="titulo" placeholder="Título" value={form.titulo} onChange={handleChange} required />
-                <input type="text" name="editorial" placeholder="Editorial" value={form.editorial} onChange={handleChange} required />
-                <input type="text" name="genero" placeholder="Género" value={form.genero} onChange={handleChange} required />
-                <input type="number" name="anioPublicacion" placeholder="Año de Publicación" value={form.anioPublicacion} onChange={handleChange} required />
-                <select name="autor" value={form.autor} onChange={handleChange} required>
-                    <option value="">Selecciona un autor</option>
-                    {autores.map((autor) => (
-                        <option key={autor._id} value={autor._id}>{autor.nombre}</option>
-                    ))}
-                </select>
-                <button type="submit" className="bg-blue-600 text-white px-4 py-2">{editId ? "Actualizar" : "Agregar"}</button>
-            </form>
-            <table className="mt-6 w-full border-collapse border border-gray-300">
-                <thead>
-                    <tr className="bg-gray-200">
-                        <th className="border p-2">ISBN</th>
-                        <th className="border p-2">Título</th> {/* Nueva columna */}
-                        <th className="border p-2">Editorial</th>
-                        <th className="border p-2">Género</th>
-                        <th className="border p-2">Año</th>
-                        <th className="border p-2">Autor</th>
-                        <th className="border p-2">Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {libros.map((libro) => (
-                        <tr key={libro._id} className="border">
-                            <td className="border p-2">{libro.isbn || "Sin ISBN"}</td>
-                            <td className="border p-2">{libro.titulo || "Sin título"}</td> {/* Mostrar título */}
-                            <td className="border p-2">{libro.editorial || "Desconocida"}</td>
-                            <td className="border p-2">{libro.genero || "No especificado"}</td>
-                            <td className="border p-2">{libro.anioPublicacion ?? "N/A"}</td>
-                            <td className="border p-2">{libro.autor?.nombre || "Desconocido"}</td>
-                            <td className="border p-2">
-                                <button onClick={() => handleEdit(libro)} className="bg-yellow-500 text-white px-2 py-1 mr-2">Editar</button>
-                                <button onClick={() => handleDelete(libro._id)} className="bg-red-600 text-white px-2 py-1">Eliminar</button>
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-        </div>
-    );
+      <table className="mt-10 w-full border-collapse bg-gray-800 rounded-lg overflow-hidden text-left">
+        <thead className="bg-gray-700 text-cyan-300">
+          <tr>
+            <th className="p-3 text-left">ISBN</th>
+            <th className="p-3 text-left">Título</th>
+            <th className="p-3 text-left">Editorial</th>
+            <th className="p-3 text-left">Género</th>
+            <th className="p-3 text-left">Año</th>
+            <th className="p-3 text-left">Autor</th>
+            <th className="p-3 text-left">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {librosData?.obtenerLibros.map((libro) => (
+            <tr key={libro.id} className="border-b border-gray-600 hover:bg-gray-700">
+              <td className="p-3">{libro.isbn}</td>
+              <td className="p-3">{libro.titulo}</td>
+              <td className="p-3">{libro.editorial}</td>
+              <td className="p-3">{libro.genero}</td>
+              <td className="p-3">{libro.anioPublicacion}</td>
+              <td className="p-3">{libro.autor?.nombre || "Desconocido"}</td>
+              <td className="p-3">
+                <button onClick={() => handleEdit(libro)} className="bg-yellow-500 hover:bg-yellow-600 text-black px-3 py-1 rounded mr-2">Editar</button>
+                <button onClick={() => handleDelete(libro.id)} className="bg-red-600 hover:bg-red-700 text-black px-3 py-1 rounded">Eliminar</button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 };
 
 export default GestionLibros;

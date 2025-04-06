@@ -1,172 +1,141 @@
-import { useState, useEffect } from "react";
-import axios from "axios";
+import { useQuery, useMutation } from "@apollo/client";
+import { useState } from "react";
+import {
+  GET_AUTORES,
+  ADD_AUTOR,
+  UPDATE_AUTOR,
+  DELETE_AUTOR
+} from "../graphql/autorQueries";
 
 const GestionAutores = () => {
-    const [autores, setAutores] = useState([]);
-    const [cedula, setCedula] = useState("");
-    const [nombre, setNombre] = useState("");
-    const [nacionalidad, setNacionalidad] = useState("");
-    const [editando, setEditando] = useState(null);
+  const { data, loading, refetch } = useQuery(GET_AUTORES);
+  const [agregarAutor] = useMutation(ADD_AUTOR);
+  const [actualizarAutor] = useMutation(UPDATE_AUTOR);
+  const [eliminarAutor] = useMutation(DELETE_AUTOR);
 
-    // Cargar autores desde el backend
-    useEffect(() => {
-        obtenerAutores();
-    }, []);
+  const [form, setForm] = useState({ cedula: "", nombre: "", nacionalidad: "" });
+  const [editId, setEditId] = useState(null);
 
-    const obtenerAutores = async () => {
-        try {
-            const response = await axios.get("http://localhost:3000/author");
-            setAutores(response.data);
-        } catch (error) {
-            console.error("Error al obtener autores", error);
-        }
-    };
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
 
-    // Manejar el envío del formulario
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        if (editando) {
-            actualizarAutor();
-        } else {
-            agregarAutor();
-        }
-    };
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const { cedula, nombre, nacionalidad } = form;
 
-    // Agregar un nuevo autor
-    const agregarAutor = async () => {
-        try {
-            const response = await axios.post("http://localhost:3000/author", {
-                cedula,
-                nombre,
-                nacionalidad,
-            });
-            setAutores([...autores, response.data]);
-            limpiarFormulario();
-        } catch (error) {
-            console.error("Error al agregar autor", error);
-        }
-    };
+    if (!cedula || !nombre || !nacionalidad) {
+      alert("Completa todos los campos");
+      return;
+    }
 
-    // Editar un autor
-    const editarAutor = (autor) => {
-        setEditando(autor._id);
-        setCedula(autor.cedula);
-        setNombre(autor.nombre);
-        setNacionalidad(autor.nacionalidad);
-    };
+    try {
+      if (editId) {
+        await actualizarAutor({ variables: { id: editId, cedula, nombre, nacionalidad } });
+        alert("Autor actualizado");
+      } else {
+        await agregarAutor({ variables: { cedula, nombre, nacionalidad } });
+        alert("Autor agregado");
+      }
+      setForm({ cedula: "", nombre: "", nacionalidad: "" });
+      setEditId(null);
+      refetch();
+    } catch (error) {
+      console.error("Error al guardar autor:", error.message);
+    }
+  };
 
-    // Actualizar un autor
-    const actualizarAutor = async () => {
-        try {
-            await axios.put(`http://localhost:3000/author/${editando}`, {
-                cedula,
-                nombre,
-                nacionalidad,
-            });
-            obtenerAutores();
-            limpiarFormulario();
-        } catch (error) {
-            console.error("Error al actualizar autor", error);
-        }
-    };
+  const handleEdit = (autor) => {
+    setForm({
+      cedula: autor.cedula,
+      nombre: autor.nombre,
+      nacionalidad: autor.nacionalidad
+    });
+    setEditId(autor.id);
+  };
 
-    // Eliminar un autor
-    const eliminarAutor = async (id) => {
-        try {
-            await axios.delete(`http://localhost:3000/author/${id}`);
-            setAutores(autores.filter((autor) => autor._id !== id));
-        } catch (error) {
-            console.error("Error al eliminar autor", error);
-        }
-    };
+  const handleDelete = async (id) => {
+    if (!window.confirm("¿Seguro que deseas eliminar este autor?")) return;
+    try {
+      await eliminarAutor({ variables: { id } });
+      refetch();
+    } catch (error) {
+      console.error("Error al eliminar autor:", error.message);
+    }
+  };
 
-    // Limpiar el formulario
-    const limpiarFormulario = () => {
-        setCedula("");
-        setNombre("");
-        setNacionalidad("");
-        setEditando(null);
-    };
+  if (loading) return <p className="text-white">Cargando autores...</p>;
 
-    return (
-        <div className="max-w-3xl mx-auto p-6 bg-white shadow-lg rounded-lg mt-10">
-            <h2 className="text-2xl font-bold text-center text-blue-600 mb-4">
-                Gestión de Autores
-            </h2>
+  return (
+    <div className="min-h-screen bg-gray-900 p-6 text-white font-[Poppins]">
+      <div className="max-w-4xl mx-auto bg-gray-800 p-6 rounded-lg shadow-lg">
+        <h2 className="text-3xl font-bold text-center text-cyan-400 mb-6">Gestión de Autores</h2>
 
-            <form onSubmit={handleSubmit} className="mb-4">
-                <div className="mb-2">
-                    <label className="block text-sm font-medium">Cédula</label>
-                    <input
-                        type="text"
-                        value={cedula}
-                        onChange={(e) => setCedula(e.target.value)}
-                        className="w-full p-2 border rounded"
-                        required
-                    />
-                </div>
-                <div className="mb-2">
-                    <label className="block text-sm font-medium">Nombre Completo</label>
-                    <input
-                        type="text"
-                        value={nombre}
-                        onChange={(e) => setNombre(e.target.value)}
-                        className="w-full p-2 border rounded"
-                        required
-                    />
-                </div>
-                <div className="mb-2">
-                    <label className="block text-sm font-medium">Nacionalidad</label>
-                    <input
-                        type="text"
-                        value={nacionalidad}
-                        onChange={(e) => setNacionalidad(e.target.value)}
-                        className="w-full p-2 border rounded"
-                        required
-                    />
-                </div>
+        <form onSubmit={handleSubmit} className="grid gap-4 mb-6">
+          <input
+            type="text"
+            name="cedula"
+            placeholder="Cédula"
+            value={form.cedula}
+            onChange={handleChange}
+            className="w-full rounded-lg bg-gray-700 p-2 text-white"
+            required
+          />
+          <input
+            type="text"
+            name="nombre"
+            placeholder="Nombre Completo"
+            value={form.nombre}
+            onChange={handleChange}
+            className="w-full rounded-lg bg-gray-700 p-2 text-white"
+            required
+          />
+          <input
+            type="text"
+            name="nacionalidad"
+            placeholder="Nacionalidad"
+            value={form.nacionalidad}
+            onChange={handleChange}
+            className="w-full rounded-lg bg-gray-700 p-2 text-white"
+            required
+          />
+          <button
+            type="submit"
+            className="w-full rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white hover:bg-indigo-700 transition"
+          >
+            {editId ? "Actualizar Autor" : "Agregar Autor"}
+          </button>
+        </form>
 
+        <h3 className="text-xl font-semibold text-cyan-300 mb-4">Lista de Autores</h3>
+        <div className="grid sm:grid-cols-2 gap-4">
+          {data?.obtenerAutores.map((autor) => (
+            <div key={autor.id} className="bg-gray-700 rounded-xl p-4 shadow-md flex justify-between items-start">
+              <div>
+                <p className="text-lg font-bold text-white">{autor.nombre}</p>
+                <p className="text-sm text-gray-300">Cédula: {autor.cedula}</p>
+                <p className="text-sm text-gray-300">Nacionalidad: {autor.nacionalidad}</p>
+              </div>
+              <div className="flex flex-col gap-2">
                 <button
-                    type="submit"
-                    className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+                  onClick={() => handleEdit(autor)}
+                  className="rounded bg-yellow-500 px-3 py-1 text-black hover:bg-yellow-600"
                 >
-                    {editando ? "Actualizar Autor" : "Agregar Autor"}
+                  Editar
                 </button>
-            </form>
-
-            <h3 className="text-xl font-semibold mb-3">Lista de Autores</h3>
-            <ul>
-                {autores.map((autor) => (
-                    <li
-                        key={autor._id}
-                        className="flex justify-between items-center bg-gray-100 p-2 mb-2 rounded"
-                    >
-                        <div>
-                            <p className="text-lg font-medium">{autor.nombre}</p>
-                            <p className="text-sm text-gray-600">Cédula: {autor.cedula}</p>
-                            <p className="text-sm text-gray-600">
-                                Nacionalidad: {autor.nacionalidad}
-                            </p>
-                        </div>
-                        <div className="flex gap-2">
-                            <button
-                                onClick={() => editarAutor(autor)}
-                                className="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600"
-                            >
-                                Editar
-                            </button>
-                            <button
-                                onClick={() => eliminarAutor(autor._id)}
-                                className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
-                            >
-                                Eliminar
-                            </button>
-                        </div>
-                    </li>
-                ))}
-            </ul>
+                <button
+                  onClick={() => handleDelete(autor.id)}
+                  className="rounded bg-red-600 px-3 py-1 text-black hover:bg-red-700"
+                >
+                  Eliminar
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
-    );
+      </div>
+    </div>
+  );
 };
 
 export default GestionAutores;
