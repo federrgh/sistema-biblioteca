@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { useQuery, useMutation } from "@apollo/client";
+import { GET_LIBROS, GET_AUTORES, ADD_LIBRO } from "../graphql/libroQueries";
 
 const GestionLibros = () => {
     const [libros, setLibros] = useState([]);

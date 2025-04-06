@@ -25,7 +25,42 @@ const schema = buildSchema(`
     }
 
     type Mutation {
-        agregarLibro(isbn: String!, titulo: String!, editorial: String, genero: String, anioPublicacion: Int, autor: ID!): Libro
+        agregarLibro(
+            isbn: String!, 
+            titulo: String!, 
+            editorial: String, 
+            genero: String, 
+            anioPublicacion: Int, 
+            autor: ID!
+        ): Libro
+
+        actualizarLibro(
+            id: ID!
+            isbn: String
+            titulo: String
+            editorial: String
+            genero: String
+            anioPublicacion: Int
+            autor: ID
+        ): Libro
+
+        eliminarLibro(id: ID!): String
+
+        agregarAutor(
+            cedula: String!
+            nombre: String!
+            nacionalidad: String
+        ): Author
+
+        actualizarAutor(
+            id: ID!
+            cedula: String
+            nombre: String
+            nacionalidad: String
+        ): Author
+
+        eliminarAutor(id: ID!): String
+
     }
 `);
 
