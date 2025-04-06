@@ -19,9 +19,15 @@ const schema = buildSchema(`
         libros: [Libro]
     }
 
+    type ReporteAutor {
+        nombre: String
+        libros: [Libro]
+    }
+
     type Query {
         obtenerLibros: [Libro]
         obtenerAutores: [Author]
+        reporteAutor(cedula: String!): ReporteAutor
     }
 
     type Mutation {

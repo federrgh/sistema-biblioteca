@@ -1,41 +1,46 @@
+import { gql, useLazyQuery } from "@apollo/client";
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
+
+const REPORTE_AUTOR_QUERY = gql`
+  query ObtenerReporteAutor($cedula: String!) {
+    reporteAutor(cedula: $cedula) {
+      nombre
+      libros {
+        titulo
+        isbn
+        editorial
+        genero
+        anioPublicacion
+      }
+    }
+  }
+`;
 
 const Report = () => {
   const { user } = useAuth();
   const [cedula, setCedula] = useState("");
-  const [reporte, setReporte] = useState(null);
   const [error, setError] = useState("");
+
+  const [getReporteAutor, { data, loading, error: gqlError }] = useLazyQuery(REPORTE_AUTOR_QUERY);
 
   useEffect(() => {
     if (!user || user.tipo !== "user") {
       setError("No tienes permisos para acceder a esta página.");
-      return;
     }
   }, [user]);
 
-  const obtenerReporte = async () => {
+  const obtenerReporte = () => {
     if (!cedula) {
       setError("Ingresa una cédula válida.");
       return;
     }
 
     setError("");
-
-    try {
-      const response = await fetch(`http://localhost:3000/author/reporte/${cedula}`);
-      const data = await response.json();
-
-      if (response.ok) {
-        setReporte(data);
-      } else {
-        setError("No se encontró información para la cédula ingresada.");
-        setReporte(null);
-      }
-    } catch (error) {
-      setError("Error al conectar con el servidor.");
-    }
+    getReporteAutor({ variables: { cedula } });
   };
+
+  const reporte = data?.reporteAutor;
 
   return (
     <div className="flex h-screen w-full items-center justify-center bg-gray-900 font-[Poppins] text-white">
@@ -59,17 +64,21 @@ const Report = () => {
           onClick={obtenerReporte}
           className="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-center font-medium text-white transition-colors hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-300"
         >
-          Generar Reporte
+          {loading ? "Cargando..." : "Generar Reporte"}
         </button>
 
-        {error && <p className="mt-4 text-center text-sm text-red-400">{error}</p>}
+        {(error || gqlError) && (
+          <p className="mt-4 text-center text-sm text-red-400">
+            {error || "Error al obtener el reporte."}
+          </p>
+        )}
 
         {reporte && (
           <div className="mt-6 border-t border-gray-600 pt-4">
             <h3 className="text-lg font-bold text-white">Autor: {reporte.nombre}</h3>
             <h4 className="mt-2 text-md font-semibold text-cyan-300">Libros:</h4>
             <ul className="mt-2 space-y-3">
-              {Array.isArray(reporte.libros) && reporte.libros.length > 0 ? (
+              {reporte.libros.length > 0 ? (
                 reporte.libros.map((libro, index) => (
                   <li
                     key={index}
