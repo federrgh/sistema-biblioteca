@@ -24,10 +24,26 @@ const schema = buildSchema(`
         libros: [Libro]
     }
 
+    type LoginUser {
+        id: ID!
+        user_name: String!
+        tipo: String!
+    }
+
+    type AuthPayload {
+        token: String!
+        user: LoginUser!
+    }
+
+    type Mensaje {
+        mensaje: String!
+    }
+
     type Query {
         obtenerLibros: [Libro]
         obtenerAutores: [Author]
         reporteAutor(cedula: String!): ReporteAutor
+        obtenerUsuarios: [LoginUser!]!
     }
 
     type Mutation {
@@ -67,6 +83,11 @@ const schema = buildSchema(`
 
         eliminarAutor(id: ID!): String
 
+        login(user_name: String!, password: String!): AuthPayload
+        register(user_name: String!, password: String!, tipo: String!): Mensaje
+
+        actualizarUsuario(id: ID!, user_name: String!, password: String, tipo: String!): LoginUser
+        eliminarUsuario(id: ID!): String
     }
 `);
 

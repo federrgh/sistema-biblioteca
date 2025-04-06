@@ -1,23 +1,54 @@
-import { useState, useEffect } from "react";
+import { useQuery, useMutation, gql } from "@apollo/client";
+import { useState } from "react";
+
+// === CONSULTAS Y MUTACIONES ===
+
+const GET_USUARIOS = gql`
+  query {
+    obtenerUsuarios {
+      id
+      user_name
+      tipo
+    }
+  }
+`;
+
+const REGISTER_USUARIO = gql`
+  mutation Register($user_name: String!, $password: String!, $tipo: String!) {
+    register(user_name: $user_name, password: $password, tipo: $tipo) {
+      mensaje
+    }
+  }
+`;
+
+const UPDATE_USUARIO = gql`
+  mutation ActualizarUsuario($id: ID!, $user_name: String!, $password: String, $tipo: String!) {
+    actualizarUsuario(id: $id, user_name: $user_name, password: $password, tipo: $tipo) {
+      id
+      user_name
+      tipo
+    }
+  }
+`;
+
+const DELETE_USUARIO = gql`
+  mutation EliminarUsuario($id: ID!) {
+    eliminarUsuario(id: $id)
+  }
+`;
+
+// === COMPONENTE PRINCIPAL ===
 
 const GestionUsuarios = () => {
-  const [usuarios, setUsuarios] = useState([]);
+  const { data, loading, error, refetch } = useQuery(GET_USUARIOS);
+  const [register] = useMutation(REGISTER_USUARIO);
+  const [actualizarUsuario] = useMutation(UPDATE_USUARIO);
+  const [eliminarUsuario] = useMutation(DELETE_USUARIO);
+
   const [form, setForm] = useState({ user_name: "", password: "", tipo: "user" });
   const [editId, setEditId] = useState(null);
 
-  useEffect(() => {
-    fetchUsuarios();
-  }, []);
-
-  const fetchUsuarios = async () => {
-    try {
-      const response = await fetch("http://localhost:3000/api/login");
-      const data = await response.json();
-      setUsuarios(data);
-    } catch (error) {
-      console.error("Error al obtener usuarios", error);
-    }
-  };
+  const usuarios = data?.obtenerUsuarios || [];
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -25,41 +56,53 @@ const GestionUsuarios = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const method = editId ? "PUT" : "POST";
-    const url = editId
-      ? `http://localhost:3000/api/login/login/${editId}`
-      : "http://localhost:3000/api/login/login";
 
     try {
-      await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
+      if (editId) {
+        await actualizarUsuario({
+          variables: {
+            id: editId,
+            user_name: form.user_name,
+            password: form.password || undefined,
+            tipo: form.tipo,
+          },
+        });
+      } else {
+        await register({
+          variables: {
+            user_name: form.user_name,
+            password: form.password,
+            tipo: form.tipo,
+          },
+        });
+      }
 
       setForm({ user_name: "", password: "", tipo: "user" });
       setEditId(null);
-      fetchUsuarios();
-    } catch (error) {
-      console.error("Error al guardar el usuario", error);
+      refetch();
+    } catch (err) {
+      console.error("Error al guardar el usuario", err.message);
     }
   };
 
   const handleEdit = (usuario) => {
     setForm({ user_name: usuario.user_name, password: "", tipo: usuario.tipo });
-    setEditId(usuario._id);
+    setEditId(usuario.id);
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm("¿Seguro que deseas eliminar este usuario?")) return;
 
     try {
-      await fetch(`http://localhost:3000/api/login/login/${id}`, { method: "DELETE" });
-      fetchUsuarios();
-    } catch (error) {
-      console.error("Error al eliminar el usuario", error);
+      await eliminarUsuario({ variables: { id } });
+      refetch();
+    } catch (err) {
+      console.error("Error al eliminar el usuario", err.message);
     }
   };
+
+  if (loading) return <p className="text-white">Cargando usuarios...</p>;
+  if (error) return <p className="text-red-500">Error al cargar usuarios</p>;
 
   return (
     <div className="min-h-screen bg-gray-900 text-white p-6 font-[Poppins]">
@@ -73,7 +116,7 @@ const GestionUsuarios = () => {
             placeholder="Usuario"
             value={form.user_name}
             onChange={handleChange}
-            className="w-full rounded-lg border border-gray-600 bg-gray-700 p-2 text-white placeholder-gray-400 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
+            className="w-full rounded-lg border border-gray-600 bg-gray-700 p-2 text-white"
             required
           />
           <input
@@ -82,14 +125,14 @@ const GestionUsuarios = () => {
             placeholder="Contraseña"
             value={form.password}
             onChange={handleChange}
-            className="w-full rounded-lg border border-gray-600 bg-gray-700 p-2 text-white placeholder-gray-400 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
-            required
+            className="w-full rounded-lg border border-gray-600 bg-gray-700 p-2 text-white"
+            required={!editId}
           />
           <select
             name="tipo"
             value={form.tipo}
             onChange={handleChange}
-            className="w-full rounded-lg border border-gray-600 bg-gray-700 p-2 text-white focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
+            className="w-full rounded-lg border border-gray-600 bg-gray-700 p-2 text-white"
           >
             <option value="user">Usuario</option>
             <option value="admin">Administrador</option>
@@ -104,39 +147,39 @@ const GestionUsuarios = () => {
 
         <h3 className="text-xl font-semibold text-green-300 mb-3">Lista de Usuarios</h3>
         <div className="overflow-x-auto">
-        <table className="min-w-full table-auto border-collapse border border-gray-600 text-left">
-  <thead className="bg-gray-700">
-    <tr>
-      <th className="border border-gray-600 px-4 py-2 text-left">Usuario</th>
-      <th className="border border-gray-600 px-4 py-2 text-left">Tipo</th>
-      <th className="border border-gray-600 px-2 py-2 text-left w-32 whitespace-nowrap">Acciones</th>
-    </tr>
-  </thead>
-  <tbody>
-    {usuarios.map((usuario) => (
-      <tr key={usuario._id} className="hover:bg-gray-700">
-        <td className="border border-gray-600 px-4 py-2">{usuario.user_name}</td>
-        <td className="border border-gray-600 px-4 py-2 capitalize">{usuario.tipo}</td>
-        <td className="border border-gray-600 px-2 py-2">
-          <div className="flex gap-1 flex-wrap">
-            <button
-              onClick={() => handleEdit(usuario)}
-              className="rounded bg-yellow-500 px-2 py-1 text-sm font-medium text-black hover:bg-yellow-600"
-            >
-              Editar
-            </button>
-            <button
-              onClick={() => handleDelete(usuario._id)}
-              className="rounded bg-red-600 px-2 py-1 text-sm font-medium text-black hover:bg-red-700"
-            >
-              Eliminar
-            </button>
-          </div>
-        </td>
-      </tr>
-    ))}
-  </tbody>
-</table>
+          <table className="min-w-full table-auto border-collapse border border-gray-600 text-left">
+            <thead className="bg-gray-700">
+              <tr>
+                <th className="border border-gray-600 px-4 py-2">Usuario</th>
+                <th className="border border-gray-600 px-4 py-2">Tipo</th>
+                <th className="border border-gray-600 px-2 py-2">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {usuarios.map((usuario) => (
+                <tr key={usuario.id} className="hover:bg-gray-700">
+                  <td className="border border-gray-600 px-4 py-2">{usuario.user_name}</td>
+                  <td className="border border-gray-600 px-4 py-2 capitalize">{usuario.tipo}</td>
+                  <td className="border border-gray-600 px-2 py-2">
+                    <div className="flex gap-1 flex-wrap">
+                      <button
+                        onClick={() => handleEdit(usuario)}
+                        className="rounded bg-yellow-500 px-2 py-1 text-sm font-medium text-black hover:bg-yellow-600"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        onClick={() => handleDelete(usuario.id)}
+                        className="rounded bg-red-600 px-2 py-1 text-sm font-medium text-black hover:bg-red-700"
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

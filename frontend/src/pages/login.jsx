@@ -1,73 +1,63 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useMutation } from "@apollo/client";
+import { LOGIN_MUTATION, REGISTER_MUTATION } from "../graphql/loginMutations";
 
 const Login = () => {
   const [user_name, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const [tipo, setTipo] = useState("user");
   const [isRegistering, setIsRegistering] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
 
+  const [loginUser, { loading: loginLoading }] = useMutation(LOGIN_MUTATION);
+  const [registerUser, { loading: registerLoading }] = useMutation(REGISTER_MUTATION);
+
   const handleLogin = async (e) => {
     e.preventDefault();
-    setIsLoading(true);
 
     try {
-      const response = await fetch("http://localhost:3000/api/login/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_name, password }),
+      const { data } = await loginUser({
+        variables: { user_name, password },
       });
 
-      const data = await response.json();
+      if (data?.login) {
+        login(data.login.user, data.login.token);
+        const tipoUsuario = data.login.user.tipo;
 
-      if (response.ok) {
-        login(data.user, data.token);
-        if (data.user.tipo === "admin") {
+        if (tipoUsuario === "admin") {
           navigate("/admin-dashboard");
-        } else if (data.user.tipo === "user") {
+        } else if (tipoUsuario === "user") {
           navigate("/user-dashboard");
         } else {
           navigate("/");
         }
-      } else {
-        alert(data.message);
       }
     } catch (error) {
-      alert("Error al conectar con el servidor");
-    } finally {
-      setIsLoading(false);
+      alert("Error al iniciar sesión: " + error.message);
     }
   };
 
   const handleRegister = async (e) => {
     e.preventDefault();
-    setIsLoading(true);
 
     try {
-      const response = await fetch("http://localhost:3000/api/login/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_name, password, tipo }),
+      const { data } = await registerUser({
+        variables: { user_name, password, tipo },
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
-        alert("Usuario registrado correctamente. Ahora puedes iniciar sesión.");
+      if (data?.register?.mensaje) {
+        alert(data.register.mensaje);
         setIsRegistering(false);
-      } else {
-        alert(data.mensaje);
       }
     } catch (error) {
-      alert("Error al conectar con el servidor");
-    } finally {
-      setIsLoading(false);
+      alert("Error al registrarse: " + error.message);
     }
   };
+
+  const isLoading = loginLoading || registerLoading;
 
   return (
     <div className="flex h-screen w-full items-center justify-center bg-gray-900 font-[Poppins] text-white">
@@ -81,10 +71,7 @@ const Login = () => {
           </p>
         </div>
 
-        <form
-          onSubmit={isRegistering ? handleRegister : handleLogin}
-          className="space-y-4"
-        >
+        <form onSubmit={isRegistering ? handleRegister : handleLogin} className="space-y-4">
           <input
             type="text"
             placeholder="Usuario"
@@ -120,9 +107,7 @@ const Login = () => {
           <button
             type="submit"
             className={`w-full rounded px-4 py-2 font-semibold text-white ${
-              isRegistering
-                ? "bg-green-600 hover:bg-green-700"
-                : "bg-cyan-600 hover:bg-cyan-700"
+              isRegistering ? "bg-green-600 hover:bg-green-700" : "bg-cyan-600 hover:bg-cyan-700"
             } ${isLoading ? "opacity-60 cursor-not-allowed" : ""}`}
             disabled={isLoading}
           >
