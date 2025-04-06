@@ -39,6 +39,53 @@ exports.login = async (req, res) => {
   }
 };
 
+// Obtener todos los usuarios (colección logins)
+exports.getAllLogins = async (req, res) => {
+  try {
+    const usuarios = await Login.find();
+    res.json(usuarios);
+  } catch (error) {
+    res.status(500).json({ message: "Error al obtener los usuarios", error });
+  }
+};
+
+
+// Actualizar un usuario
+exports.updateLogin = async (req, res) => {
+  const { id } = req.params;
+  const { user_name, password, tipo } = req.body;
+
+  try {
+    const updateData = { user_name, tipo };
+    if (password) {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      updateData.password = hashedPassword;
+    }
+
+    const updated = await Login.findByIdAndUpdate(id, updateData, { new: true });
+    if (!updated) return res.status(404).json({ mensaje: "Usuario no encontrado" });
+
+    res.json({ mensaje: "Usuario actualizado", usuario: updated });
+  } catch (error) {
+    res.status(500).json({ mensaje: "Error al actualizar el usuario" });
+  }
+};
+
+// Eliminar un usuario
+exports.deleteLogin = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const deleted = await Login.findByIdAndDelete(id);
+    if (!deleted) return res.status(404).json({ mensaje: "Usuario no encontrado" });
+
+    res.json({ mensaje: "Usuario eliminado" });
+  } catch (error) {
+    res.status(500).json({ mensaje: "Error al eliminar el usuario" });
+  }
+};
+
+
+
 // REGISTRO (para pruebas)
 exports.register = async (req, res) => {
   const { user_name, password, tipo } = req.body;

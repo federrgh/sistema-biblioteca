@@ -11,7 +11,7 @@ const GestionUsuarios = () => {
 
     const fetchUsuarios = async () => {
         try {
-            const response = await fetch("http://localhost:3000/api/login/login");
+            const response = await fetch("http://localhost:3000/api/login");
             const data = await response.json();
             setUsuarios(data);
         } catch (error) {
